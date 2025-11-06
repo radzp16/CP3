@@ -59,11 +59,11 @@ class Panda:
         orn = p.getQuaternionFromEuler([0, -3.141*3/2, 0])
         # move to a point given 
 
-        poses = p.calculateInverseKinematics(self.pandaId, self.end_effector_index, point, orn)
 
         difference = 1
 
         while difference > 0.01:
+            poses = p.calculateInverseKinematics(self.pandaId, self.end_effector_index, point, orn)
             for i in range(9):
                 p.resetJointState(self.pandaId, i, poses[i])
             p.stepSimulation()
