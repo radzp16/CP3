@@ -61,15 +61,21 @@ class Panda:
 
         poses = p.calculateInverseKinematics(self.pandaId, self.end_effector_index, point, orn)
 
-        for i in range(9):
-            p.resetJointState(self.pandaId, i, poses[i])
+        difference = 1
+
+        while difference > 0.01:
+            for i in range(9):
+                p.resetJointState(self.pandaId, i, poses[i])
+            p.stepSimulation()
+            difference = self.find_loc_difference(point)
+            print(difference)
+
+
 
         return
     
-    def find_loc_difference(self, point, blackboard=True):
+    def find_loc_difference(self, point):
 
-        if blackboard:
-            point = [0.5] + list(point)
 
         link_state = p.getLinkState(self.pandaId, self.end_effector_index, computeForwardKinematics=True)
         link_position = link_state[0]
@@ -116,7 +122,7 @@ if __name__ == "__main__":
     # Start recording video 
     # log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "./video.mp4")
 
-    c_points = make_c_points(0)
+    # c_points = make_c_points(0)
 
     while p.isConnected():
 
@@ -124,15 +130,10 @@ if __name__ == "__main__":
             panda.draw_on_blackboard()
 
         # IMPORTANT - You need to run this command for every step in simulation
-        for point in c_points:
+        for point in [[0,0.5],[0.1, 0.5]]:
             panda.move_to_point(point)
-            
-            distance = panda.find_loc_difference(point)
 
-            while distance > 0.01:
-                panda.move_to_point(point)
-                distance = panda.find_loc_difference(point)
-                p.stepSimulation()
+                
             panda.draw_on_blackboard() 
         # Command to stop recording when done
         # p.stopStateLogging(log_id)
