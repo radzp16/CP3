@@ -1,5 +1,6 @@
 import pybullet as p
 import pybullet_data
+import numpy as np
 
 
 ### Setup Pybullet ###
@@ -33,13 +34,15 @@ class Panda:
     """
     def __init__(self, pandaId):
         self.pandaId = pandaId
+        self.end_effector_index = 11
 
     def draw_on_blackboard(self):
         """
         This function draws a point in 3D space at the current end-effector of the robot
         """
-        end_effector_index = 11
-        link_state = p.getLinkState(self.pandaId, end_effector_index, computeForwardKinematics=True)
+        
+        link_state = p.getLinkState(self.pandaId, self.end_effector_index, computeForwardKinematics=True)
+
         # Position andd orientation of the link in the base frame.
         link_position = link_state[0]
         tip_position = list(link_position)
@@ -47,6 +50,20 @@ class Panda:
         vid = p.createVisualShape(p.GEOM_SPHERE, radius=0.01, rgbaColor=[255, 255, 255, 1])
         p.createMultiBody(baseVisualShapeIndex=vid, basePosition=tip_position)
 
+    def move_to_point(self, point, blackboard=True):
+
+        if blackboard:
+            point = [0.5] + point
+        point = point + p.getQuaternionFromEuler([3.1415/2, 0, 0])
+        # move to a point given 
+
+        poses = p.calculateInverseKinematics(self.pandaId, self.end_effector_index, point)
+        for i in range(11):
+            p.resetJointState(self.pandaId, i, poses[i])
+
+
+def make_points_list(eq, base_pt):
+    
 
 
 
@@ -59,15 +76,17 @@ if __name__ == "__main__":
     # Start recording video 
     log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "./video.mp4")
 
+
+
     while p.isConnected():
 
         for i in range(10):
             panda.draw_on_blackboard()
 
         # IMPORTANT - You need to run this command for every step in simulation
-        p.stepSimulation() 
 
+        p.stepSimulation() 
         # Command to stop recording when done
-        p.stopStateLogging(log_id)
+        # p.stopStateLogging(log_id)
 
     p.disconnect()
