@@ -62,9 +62,20 @@ class Panda:
             p.resetJointState(self.pandaId, i, poses[i])
 
 
-def make_points_list(eq, base_pt):
-    
+def make_c_points(base_pt):
+    y = np.linspace(base_pt, base_pt+0.38, 10)
+    eq = lambda y: np.sqrt(0.5**2 - (y - base_pt + 0.25)**2)
 
+    z_plus = 0.5 + eq(y)
+    z_minus = 0.5 - eq(y)
+
+    y_z_plus = np.column_stack(y, z_plus)
+    y_z_minus = np.column_stack(y, z_minus)
+
+    points = np.concatenate((y_z_plus, y_z_minus))
+
+    return points
+    
 
 
 if __name__ == "__main__":
@@ -76,7 +87,7 @@ if __name__ == "__main__":
     # Start recording video 
     log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "./video.mp4")
 
-
+    c_points = make_c_points(0)
 
     while p.isConnected():
 
@@ -84,8 +95,10 @@ if __name__ == "__main__":
             panda.draw_on_blackboard()
 
         # IMPORTANT - You need to run this command for every step in simulation
-
-        p.stepSimulation() 
+        for point in c_points:
+            panda.move_to_point(point)
+            panda.draw_on_blackboard()
+            p.stepSimulation() 
         # Command to stop recording when done
         # p.stopStateLogging(log_id)
 
