@@ -61,6 +61,9 @@ if __name__ == "__main__":
 
     while p.isConnected():
 
+        for i in range(10):
+            panda.draw_on_blackboard()
+
         # IMPORTANT - You need to run this command for every step in simulation
         p.stepSimulation() 
 
