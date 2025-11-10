@@ -59,7 +59,6 @@ class Panda:
         orn = p.getQuaternionFromEuler([0, -3.141*3/2, 0])
         # move to a point given 
 
-
         difference = 1
 
         while difference > 0.01:
@@ -93,8 +92,9 @@ class Panda:
 
 
 def make_c_points(base_pt):
-    y = np.linspace(base_pt, base_pt+0.38, 10)
-    eq = lambda y: (0.25**2 - (y - base_pt)**2)**0.5
+    r = 0.1
+    y = np.linspace(base_pt-r+0.03, base_pt+r, 20)
+    eq = lambda y: (r**2 - (y - base_pt)**2)**0.5
     z_plus = 0.5 + eq(y)
     z_minus = 0.5 - eq(y)
 
@@ -106,7 +106,7 @@ def make_c_points(base_pt):
     print(points)
     return points
 
-def make_line(base_pt):
+def make_u_points(base_pt):
     z = np.linspace(base_pt, base_pt+0.2, 10)
 
 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     # Start recording video 
     # log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "./video.mp4")
 
-    # c_points = make_c_points(0)
+    c_points = make_c_points(0)
 
     while p.isConnected():
 
@@ -130,10 +130,9 @@ if __name__ == "__main__":
             panda.draw_on_blackboard()
 
         # IMPORTANT - You need to run this command for every step in simulation
-        for point in [[0,0.5],[0.1, 0.5]]:
-            panda.move_to_point(point)
+        for point in c_points:
 
-                
+            panda.move_to_point(point)        
             panda.draw_on_blackboard() 
         # Command to stop recording when done
         # p.stopStateLogging(log_id)
