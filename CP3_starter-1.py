@@ -36,6 +36,34 @@ class Panda:
     def __init__(self, pandaId):
         self.pandaId = pandaId
         self.end_effector_index = 11
+        self.ll, self.ul, self.jr, self.js = self.get_joint_dynamics()
+        self.js = (-0.42345759824061124, 1.6947571434990787, -0.2319733123876026, 1.5292328610779409, 0.39579087373147126, 1.8138928302630748, -2.208256613520994, 0.0, 0.0)
+
+
+
+    def get_joint_dynamics(self):
+
+        lower_joint_limits = []
+        upper_joint_limits = []
+        joint_ranges = []
+        pref_state = []
+        num_joints = p.getNumJoints(self.pandaId)
+
+        
+        for i in range(num_joints):
+            info = p.getJointInfo(self.pandaId, i)
+            state = p.getJointState(self.pandaId, i)
+            if info[2] != 4:
+                lower_joint_limits.append(info[8])
+                upper_joint_limits.append(info[9])
+                joint_ranges.append(info[9] - info[8])
+                pref_state.append(state[0])
+
+
+
+
+        return lower_joint_limits, upper_joint_limits, joint_ranges, pref_state
+
 
     def draw_on_blackboard(self):
         """
@@ -55,22 +83,39 @@ class Panda:
 
         if blackboard:
             point = [0.5] + list(point)
+        
+        if np.any(np.isnan(point)):
+            print(f"Skipped {point}")
+            return
 
         orn = p.getQuaternionFromEuler([0, -3.141*3/2, 0])
         # move to a point given 
 
         difference = 1
-
-        while difference > 0.01:
-            poses = p.calculateInverseKinematics(self.pandaId, self.end_effector_index, point, orn)
+        i = 0
+        while difference > 0.01 and i < 5:
+            poses = p.calculateInverseKinematics(self.pandaId, self.end_effector_index, point, orn,
+                                                 self.ll, self.ul, self.jr, self.js,
+                                                 maxNumIterations=100)
+            print(self.jr)
+            print(self.js)
+            print(poses)
+            
+            
+            
             for i in range(9):
                 p.resetJointState(self.pandaId, i, poses[i])
             p.stepSimulation()
             difference = self.find_loc_difference(point)
-            print(difference)
+            
+            time.sleep(2)
+
+            
+            
 
 
-
+        p.stopStateLogging(log_id)
+        6/0
         return
     
     def find_loc_difference(self, point):
@@ -92,22 +137,42 @@ class Panda:
 
 
 def make_c_points(base_pt):
-    r = 0.1
-    y = np.linspace(base_pt-r+0.03, base_pt+r, 20)
+    r = 0.13
+    y = np.linspace(base_pt-r+0.03, base_pt+r, 20, endpoint=False)
     eq = lambda y: (r**2 - (y - base_pt)**2)**0.5
-    z_plus = 0.5 + eq(y)
-    z_minus = 0.5 - eq(y)
+    z_plus = 0.6 + eq(y)
+    z_minus = 0.6 - eq(y)
 
     y_z_plus = np.column_stack((y, z_plus))
     y_z_minus = np.column_stack((y, z_minus))
 
     points = np.concatenate((y_z_plus, y_z_minus))
 
-    print(points)
+
+
     return points
 
-def make_u_points(base_pt):
-    z = np.linspace(base_pt, base_pt+0.2, 10)
+def make_u_points(base_pt_y, base_pt_z):
+    r = 0.07
+    z = np.linspace(base_pt_z+0.16, base_pt_z-0.005, 10, endpoint=True)
+    y = np.array([base_pt_y - r]*len(z))
+    y2 = y + r*2
+
+    line1 = np.column_stack((y, z))
+    line2 = np.column_stack((y2, z))
+
+    y_circ = np.linspace(base_pt_y-r, base_pt_y+r, 15, endpoint=True)
+    eq = lambda y: (r**2 - (y - base_pt_y)**2)**0.5
+    z_circ = base_pt_z - eq(y_circ)
+
+    circ = np.column_stack((y_circ, z_circ))
+
+    points = np.concatenate((line1, circ, line2))
+
+    return points
+
+    
+
 
 
     
@@ -120,9 +185,11 @@ if __name__ == "__main__":
 
     p.setRealTimeSimulation(0)
     # Start recording video 
-    # log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "./video.mp4")
+    log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "./video.mp4")
 
-    c_points = make_c_points(0)
+    c_points = make_c_points(0.06)
+
+    u_points = make_u_points(-0.22, 0.57)
 
     while p.isConnected():
 
@@ -131,7 +198,9 @@ if __name__ == "__main__":
 
         # IMPORTANT - You need to run this command for every step in simulation
         for point in c_points:
-
+            panda.move_to_point(point)        
+            panda.draw_on_blackboard()
+        for point in u_points:
             panda.move_to_point(point)        
             panda.draw_on_blackboard() 
         # Command to stop recording when done
