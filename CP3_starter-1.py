@@ -36,11 +36,12 @@ class Panda:
     def __init__(self, pandaId):
         self.pandaId = pandaId
         self.end_effector_index = 11
+        # Get limits for inverseKinematics
         self.ll, self.ul, self.jr, self.js = self.get_joint_dynamics()
         self.js = (-0.5374475195361492, 0, -np.pi, -1.390636534247483, 0.6108388468978245, 1.840519420430536, -2.8011367014589648, -1.681100293674143e-06, 0.0015162053813007844)
 
 
-
+    # This function gets limits on all the joints to prevent overlapping joints in Inverse Kinematics
     def get_joint_dynamics(self):
 
         lower_joint_limits = []
@@ -51,6 +52,7 @@ class Panda:
 
         
         for i in range(num_joints):
+            #Requires looping through all of the joints, including ones that don't rotate
             info = p.getJointInfo(self.pandaId, i)
             state = p.getJointState(self.pandaId, i)
             lower_joint_limits.append(info[8])
@@ -58,6 +60,7 @@ class Panda:
             joint_ranges.append(info[9] - info[8])
             pref_state.append(0)
 
+        # I had something break and made everything tuples. Not sure if it helped
         lj = tuple(lower_joint_limits)
         ul = tuple(upper_joint_limits)
         jr = tuple(joint_ranges)
@@ -80,31 +83,35 @@ class Panda:
         vid = p.createVisualShape(p.GEOM_SPHERE, radius=0.01, rgbaColor=[255, 255, 255, 1])
         p.createMultiBody(baseVisualShapeIndex=vid, basePosition=tip_position)
 
+    # Pass a point in form [y, z] and this will move to that location on the blackboard at x=0.5
     def move_to_point(self, point, blackboard=True):
 
         if blackboard:
             point = [0.5] + list(point)
         
+        # Had some issues with points generated outside the circle and subsequently nan ing
         if np.any(np.isnan(point)):
             print(f"Skipped {point}")
             return
 
         orn = p.getQuaternionFromEuler([0, 3.141/2, 0])
-        # move to a point given 
+        # Point at the blackboard
 
         difference = 1
         j = 0
+        # Sometimes the stepStimulation does not move the arm enough for some reason.
         while difference > 0.001:
             poses = p.calculateInverseKinematics(self.pandaId, self.end_effector_index, point, orn,
                                                 lowerLimits=self.ll, upperLimits=self.ul, jointRanges=self.jr, restPoses=self.js,
                                                  maxNumIterations=20)
             
             
-            
+            # Have to teleport all the joints one by one
             for i in range(9):
                 p.resetJointState(self.pandaId, i, poses[i])
             p.stepSimulation()
             difference = self.find_loc_difference(point)
+            #If it gets stuck, you get this output
             j+=1
             if j > 5:
                 print("failing")
@@ -117,7 +124,7 @@ class Panda:
     
     def find_loc_difference(self, point):
 
-
+        # Very simple find end effector, use euclidian distance
         link_state = p.getLinkState(self.pandaId, self.end_effector_index, computeForwardKinematics=True)
         link_position = link_state[0]
         tip = list(link_position)
@@ -132,7 +139,7 @@ class Panda:
 
 
 
-
+# Makes the points of the "C" using 2 semicircles
 def make_c_points(base_pt):
     r = 0.13
     y = np.linspace(base_pt-r+0.03, base_pt+r, 20, endpoint=True)
@@ -140,21 +147,25 @@ def make_c_points(base_pt):
     z_plus = 0.6 + eq(y)
     z_minus = 0.6 - eq(y)
 
+    # Turns y and z into [y,z] pairs
     y_z_plus = np.column_stack((y, z_plus))
     y_z_minus = np.column_stack((y, z_minus))
 
+    # Turns it into single list
     points = np.concatenate((y_z_plus, y_z_minus))
 
 
 
     return points
 
+# Makes the points of the "U" using two lines and a semicircle
 def make_u_points(base_pt_y, base_pt_z):
     r = 0.07
     z = np.linspace(base_pt_z+0.16, base_pt_z-0.01, 10, endpoint=True)
     y = np.array([base_pt_y - r]*len(z))
     y2 = y + r*2
 
+    # Turns lines into y z pairs
     line1 = np.column_stack((y, z))
     line2 = np.column_stack((y2, z))
 
@@ -184,16 +195,15 @@ if __name__ == "__main__":
     # Start recording video 
     log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "./video.mp4")
 
+    # Make the points of the letter
     c_points = make_c_points(0.06)
 
     u_points = make_u_points(-0.22, 0.57)
 
     while p.isConnected():
 
-        for i in range(10):
-            panda.draw_on_blackboard()
 
-        # IMPORTANT - You need to run this command for every step in simulation
+        # Move to the points we generated and then draw
         for point in c_points:
             panda.move_to_point(point)        
             panda.draw_on_blackboard()
