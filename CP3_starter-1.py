@@ -2,6 +2,7 @@ import pybullet as p
 import pybullet_data
 import numpy as np
 import time
+import cv2 
 
 
 ### Setup Pybullet ###
@@ -179,7 +180,8 @@ def make_u_points(base_pt_y, base_pt_z):
 
     return points
 
-    
+def make_buff(base_pt_y, base_pt_z):
+    pass
 
 
 
