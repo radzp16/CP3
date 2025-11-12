@@ -37,7 +37,7 @@ class Panda:
         self.pandaId = pandaId
         self.end_effector_index = 11
         self.ll, self.ul, self.jr, self.js = self.get_joint_dynamics()
-        self.js = (-0.42345759824061124, 1.6947571434990787, -0.2319733123876026, 1.5292328610779409, 0.39579087373147126, 1.8138928302630748, -2.208256613520994, 0.0, 0.0)
+        self.js = (-0.5374475195361492, 0, -np.pi, -1.390636534247483, 0.6108388468978245, 1.840519420430536, -2.8011367014589648, -1.681100293674143e-06, 0.0015162053813007844)
 
 
 
@@ -53,16 +53,17 @@ class Panda:
         for i in range(num_joints):
             info = p.getJointInfo(self.pandaId, i)
             state = p.getJointState(self.pandaId, i)
-            if info[2] != 4:
-                lower_joint_limits.append(info[8])
-                upper_joint_limits.append(info[9])
-                joint_ranges.append(info[9] - info[8])
-                pref_state.append(state[0])
+            lower_joint_limits.append(info[8])
+            upper_joint_limits.append(info[9])
+            joint_ranges.append(info[9] - info[8])
+            pref_state.append(0)
 
+        lj = tuple(lower_joint_limits)
+        ul = tuple(upper_joint_limits)
+        jr = tuple(joint_ranges)
+        js = tuple(pref_state)
 
-
-
-        return lower_joint_limits, upper_joint_limits, joint_ranges, pref_state
+        return lj, ul, jr, js
 
 
     def draw_on_blackboard(self):
@@ -88,18 +89,15 @@ class Panda:
             print(f"Skipped {point}")
             return
 
-        orn = p.getQuaternionFromEuler([0, -3.141*3/2, 0])
+        orn = p.getQuaternionFromEuler([0, 3.141/2, 0])
         # move to a point given 
 
         difference = 1
-        i = 0
-        while difference > 0.01 and i < 5:
+        j = 0
+        while difference > 0.001:
             poses = p.calculateInverseKinematics(self.pandaId, self.end_effector_index, point, orn,
-                                                 self.ll, self.ul, self.jr, self.js,
-                                                 maxNumIterations=100)
-            print(self.jr)
-            print(self.js)
-            print(poses)
+                                                lowerLimits=self.ll, upperLimits=self.ul, jointRanges=self.jr, restPoses=self.js,
+                                                 maxNumIterations=20)
             
             
             
@@ -107,15 +105,14 @@ class Panda:
                 p.resetJointState(self.pandaId, i, poses[i])
             p.stepSimulation()
             difference = self.find_loc_difference(point)
+            j+=1
+            if j > 5:
+                print("failing")
+                print(poses)
             
-            time.sleep(2)
 
-            
-            
-
-
-        p.stopStateLogging(log_id)
-        6/0
+        
+        
         return
     
     def find_loc_difference(self, point):
@@ -138,7 +135,7 @@ class Panda:
 
 def make_c_points(base_pt):
     r = 0.13
-    y = np.linspace(base_pt-r+0.03, base_pt+r, 20, endpoint=False)
+    y = np.linspace(base_pt-r+0.03, base_pt+r, 20, endpoint=True)
     eq = lambda y: (r**2 - (y - base_pt)**2)**0.5
     z_plus = 0.6 + eq(y)
     z_minus = 0.6 - eq(y)
@@ -154,7 +151,7 @@ def make_c_points(base_pt):
 
 def make_u_points(base_pt_y, base_pt_z):
     r = 0.07
-    z = np.linspace(base_pt_z+0.16, base_pt_z-0.005, 10, endpoint=True)
+    z = np.linspace(base_pt_z+0.16, base_pt_z-0.01, 10, endpoint=True)
     y = np.array([base_pt_y - r]*len(z))
     y2 = y + r*2
 
@@ -204,6 +201,6 @@ if __name__ == "__main__":
             panda.move_to_point(point)        
             panda.draw_on_blackboard() 
         # Command to stop recording when done
-        # p.stopStateLogging(log_id)
+        p.stopStateLogging(log_id)
 
-    p.disconnect()
+        p.disconnect()
