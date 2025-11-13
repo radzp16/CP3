@@ -2,8 +2,7 @@ import pybullet as p
 import pybullet_data
 import numpy as np
 import time
-import cv2 
-import matplotlib.pyplot as plt
+import cv2
 
 
 ### Setup Pybullet ###
@@ -156,8 +155,6 @@ def make_c_points(base_pt):
     # Turns it into single list
     points = np.concatenate((y_z_plus, y_z_minus))
 
-
-
     return points
 
 # Makes the points of the "U" using two lines and a semicircle
@@ -181,20 +178,40 @@ def make_u_points(base_pt_y, base_pt_z):
 
     return points
 
-def make_buff():
-    img = cv2.imread('./buffs_logo.png', cv2.IMREAD_GRAYSCALE)
-    edges = cv2.Canny(img,100,200)
- 
-    plt.subplot(121),plt.imshow(img,cmap = 'gray')
-    plt.title('Original Image'), plt.xticks([]), plt.yticks([])
-    plt.subplot(122),plt.imshow(edges,cmap = 'gray')
-    plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
+def CUBoulderFTW(c_points, u_points):
+    # Move to the points we generated and then draw
+    for point in c_points:
+        panda.move_to_point(point)        
+        panda.draw_on_blackboard()
+    for point in u_points:
+        panda.move_to_point(point)        
+        panda.draw_on_blackboard() 
+
+def SKO_BUFFS():
+
+    # Upload buffalo logo image
+    img = cv2.imread('buffalo.png')
+
+    # Convert to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    _, threshold = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY) 
+
+    contours, _= cv2.findContours(threshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
-    plt.show()
+    # separates x,y coordiantes into a list from np.array (uses like y, z later on)
+    cnt = contours[0]
+    new = []
+    for i in range(np.shape(cnt)[0]):
+        new.append((-(float(cnt[i, 0, 0])/300 - .3 ), -(float(cnt[i,0,1])/300)+.7))
 
+    # Skips every other point to speed up process
+    new = new [::2]
 
-
-    
+    # Move to points to generate image
+    for point in new:
+        panda.move_to_point(point)        
+        panda.draw_on_blackboard()
 
 
 if __name__ == "__main__":
@@ -205,7 +222,9 @@ if __name__ == "__main__":
 
     p.setRealTimeSimulation(0)
     # Start recording video 
-    log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "./video.mp4")
+
+    log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "./buffalo_video.mp4")
+    print("log_id", log_id)
 
     # Make the points of the letter
     c_points = make_c_points(0.06)
@@ -214,14 +233,9 @@ if __name__ == "__main__":
 
     while p.isConnected():
 
+        #CUBoulderFTW(c_points, u_points)
 
-        # Move to the points we generated and then draw
-        for point in c_points:
-            panda.move_to_point(point)        
-            panda.draw_on_blackboard()
-        for point in u_points:
-            panda.move_to_point(point)        
-            panda.draw_on_blackboard() 
+        SKO_BUFFS()
         # Command to stop recording when done
         p.stopStateLogging(log_id)
 
