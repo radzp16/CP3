@@ -3,6 +3,7 @@ import pybullet_data
 import numpy as np
 import time
 import cv2 
+import matplotlib.pyplot as plt
 
 
 ### Setup Pybullet ###
@@ -180,8 +181,16 @@ def make_u_points(base_pt_y, base_pt_z):
 
     return points
 
-def make_buff(base_pt_y, base_pt_z):
-    pass
+def make_buff():
+    img = cv2.imread('./buffs_logo.png', cv2.IMREAD_GRAYSCALE)
+    edges = cv2.Canny(img,100,200)
+ 
+    plt.subplot(121),plt.imshow(img,cmap = 'gray')
+    plt.title('Original Image'), plt.xticks([]), plt.yticks([])
+    plt.subplot(122),plt.imshow(edges,cmap = 'gray')
+    plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
+    
+    plt.show()
 
 
 
@@ -189,6 +198,7 @@ def make_buff(base_pt_y, base_pt_z):
 
 
 if __name__ == "__main__":
+    make_buff()
     pandaId = setup_pybullet()
     panda = Panda(pandaId)
     print("Done setting up pybullet")
