@@ -5,6 +5,7 @@ import time
 import cv2
 
 
+
 ### Setup Pybullet ###
 
 def setup_pybullet():
@@ -113,10 +114,10 @@ class Panda:
             p.stepSimulation()
             difference = self.find_loc_difference(point)
             #If it gets stuck, you get this output
-            j+=1
-            if j > 5:
-                print("failing")
-                print(poses)
+            # j+=1
+            # if j > 5:
+            #     print("failing")
+            #     print(poses)
             
 
         
@@ -141,12 +142,12 @@ class Panda:
 
 
 # Makes the points of the "C" using 2 semicircles
-def make_c_points(base_pt):
+def make_c_points(base_pt_y, base_pt_z):
     r = 0.13
-    y = np.linspace(base_pt-r+0.03, base_pt+r, 20, endpoint=True)
-    eq = lambda y: (r**2 - (y - base_pt)**2)**0.5
-    z_plus = 0.6 + eq(y)
-    z_minus = 0.6 - eq(y)
+    y = np.linspace(base_pt_y-r+0.03, base_pt_y+r, 20, endpoint=True)
+    eq = lambda y: (r**2 - (y - base_pt_y)**2)**0.5
+    z_plus = base_pt_z + eq(y)
+    z_minus = base_pt_z - eq(y)
 
     # Turns y and z into [y,z] pairs
     y_z_plus = np.column_stack((y, z_plus))
@@ -187,7 +188,7 @@ def CUBoulderFTW(c_points, u_points):
         panda.move_to_point(point)        
         panda.draw_on_blackboard() 
 
-def SKO_BUFFS():
+def SKO_BUFFS(base_y, base_z):
 
     # Upload buffalo logo image
     img = cv2.imread('buffalo.png')
@@ -195,7 +196,7 @@ def SKO_BUFFS():
     # Convert to grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    _, threshold = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY) 
+    _, threshold = cv2.threshold(gray, 1, 30, cv2.THRESH_BINARY) 
 
     contours, _= cv2.findContours(threshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
@@ -203,7 +204,7 @@ def SKO_BUFFS():
     cnt = contours[0]
     new = []
     for i in range(np.shape(cnt)[0]):
-        new.append((-(float(cnt[i, 0, 0])/300 - .3 ), -(float(cnt[i,0,1])/300)+.7))
+        new.append([-(float(cnt[i, 0, 0])/300) + base_y, -(float(cnt[i,0,1])/300) + base_z])
 
     # Skips every other point to speed up process
     new = new [::2]
@@ -215,7 +216,6 @@ def SKO_BUFFS():
 
 
 if __name__ == "__main__":
-    make_buff()
     pandaId = setup_pybullet()
     panda = Panda(pandaId)
     print("Done setting up pybullet")
@@ -223,19 +223,18 @@ if __name__ == "__main__":
     p.setRealTimeSimulation(0)
     # Start recording video 
 
-    log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "./buffalo_video.mp4")
-    print("log_id", log_id)
+    log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "./final_submission.mp4")
 
     # Make the points of the letter
-    c_points = make_c_points(0.06)
+    c_points = make_c_points(0.06, 0.8)
 
-    u_points = make_u_points(-0.22, 0.57)
+    u_points = make_u_points(-0.22, 0.77)
 
     while p.isConnected():
 
-        #CUBoulderFTW(c_points, u_points)
+        CUBoulderFTW(c_points, u_points)
 
-        SKO_BUFFS()
+        SKO_BUFFS(0.3, 0.65)
         # Command to stop recording when done
         p.stopStateLogging(log_id)
 
